@@ -1,0 +1,266 @@
+OLD (bad) COMPUTER:
+
+immediete:
+calculate: ___ operation
+copy: source destination
+condition: ___ operation 
+    special: stacks
+
+condition: 
+if r3 <operation> 0:
+   cursor to r0
+
+#------------------------------------------------------------------------------#
+| Modern Computer (good!)                                                      |
+#------------------------------------------------------------------------------#
+Instruction Length: 32-bit
+
+16x Normal Registers (32-bit):
+Used for storing data
+Reg00 - This register is always 0 and will ignore writes.
+Reg15 - This register is a stackpointer. It is used for stack operations.
+
+4x Boolean Registers (1-bit):
+Used for storing booleans for ...
+Reg0 - This register is always 0 and will ignore writes
+
+--------------------------------------------------------------------------------
+
+AC - Address Calculator
+AU - Arithmetic Unit
+BRF - Boolean Register File
+CU - Compare Unit
+DRF - Dual Save/Load Register File
+LU - Logic Unit
+
+--------------------------------------------------------------------------------
+
+machine code -> assembly: 
+                        -> C -> Higher Level Languages
+                        -> Custom Language
+
+Instruction Format:
+                                                                      
+General Convention                  -------- PPQQCCCC DDDDAAAA BBBB0000
+                                                               IIIIIIII
+                                                      JJJJJJJJ JJJJJJJJ
+where:
+   - = Instruction
+   P = Boolean destination
+   Q = Boolean source
+   C = Destination 2
+   D = Destination 1
+   A = Source 1
+   B = Source 2
+   I = Immediate Value
+   J = Signed Offset
+
+F(B) -> (Logic Operation, Arithmetic Operation, Compare Operation, With Immediate, e)
+
+Logic Operation                     00000000 00000TTT DDDDAAAA BBBB0000
+Logic Operation With Immediate      00000001 0000ETTT DDDDAAAA IIIIIIII
+Arithmetic Operation                00000010 PPQQ000T DDDDAAAA BBBB0000
+Arithmetic Operation With Immediate 00000011 PPQQE00T DDDDAAAA IIIIIIII
+Compare Operation                   00000100 PPTT00TT DDDDAAAA BBBB0000
+Compare Operation With Immediate    00000101 PPTTE0TT DDDDAAAA IIIIIIII
+Direct/Indirect Jump/Call           00000110 00QQ00DC JJJJJJJJ JJJJJJJJ
+Ret                                 00000111 00QQ0000 00000000 00000000
+Load                                00001000 IIIIIIII DDDD0000 BBBB0000
+Store                               00001001 IIIIIIII 0000AAAA BBBB0000
+Push                                00001010 00000000 0000AAAA BBBB0000
+Pop                                 00001011 00000000 DDDD0000 BBBB0000
+
+--------------------------------------------------------------------------------
+
+File Header:
+ - Program Size
+ - Program Location
+ - Start Location
+ - Stack Location
+
+--------------------------------------------------------------------------------
+
+Control lines:
+ - Enable Destination 0 Register
+ - Enable Source 0 Register
+ - Enable Source 1 Register
+ - Enable Destination 1 Register
+ - Logic Operation
+ - Arithmetic Operation
+ - Compare Operation
+ - Use Immediate
+ - Enable Boolean Destination
+ - Don't Increment Instruction Pointer
+
+--------------------------------------------------------------------------------
+
+Logic Operations:
+operation_type (3): AND, OR, XOR, LSHIFT, RSHIFT, LROTATE, RROTATE, ARITH_RSHIFT
+destination_register (4):
+   source_1_register (4):
+   source_2_register (4):
+
+--------------------------------------------------------------------------------
+
+Arithmetic Operation:
+operation_type (1): ADD, SUB
+carry_or_borrow_boolean_register (2): 
+destination_register (4):
+   source_1_register (4):
+   source_2_register (4):
+
+---------------------------------------------------------------------------------
+
+Logic Operations With Immediate:
+operation_type (3): AND, OR, XOR, LSHIFT, RSHIFT, LROTATE, RROTATE, ARITH_RSHIFT
+destination_register (4):
+   source_1_register (4):
+   source_2_extend (1):
+   source_2_immediate (8): 
+
+NOT gets implemented with the following solution:
+r3 = r2 XOR 0bXXXXXXXXXXXXXXXXXXXXXXXX11111111: X=1
+r3 = NOT r2
+
+--------------------------------------------------------------------------------
+
+Arithmetic Operation With Immediate:
+operation_type (1): ADD, SUB
+carry_or_borrow_boolean_register (2):
+destination_register (4):
+   source_1_register (4):
+   source_2_extend (1):
+   source_2_immediate (8):
+
+---------------------------------------------------------------------------------
+
+Compare Operation:
+operation_type (4): 6 remaing spots!
+EQUAL,                          NOT_EQUAL, 
+  SIGNED_GREATER_THAN,            SIGNED_LESS_THAN, 
+  SIGNED_GREATER_THAN_OR_EQUAL,   SIGNED_LESS_THAN_OR_EQUAL, 
+UNSIGNED_GREATER_THAN,          UNSIGNED_LESS_THAN, 
+UNSIGNED_GREATER_THAN_OR_EQUAL, UNSIGNED_LESS_THAN_OR_EQUAL
+destination_boolean_register (2):
+   source_1_register (4):
+   source_2_register (4):
+
+xxxxxx????xxxxxxxxxxx
+The following operations look *very* binary in nature, which makes it easy to 
+implement in hardware. The extra bit is for the special cases (EQUAL/NOT_EQUAL)
+   GREATER/LESS: ?
+          EQUAL: ?
+SIGNED/UNSIGNED: ?
+
+---------------------------------------------------------------------------------
+
+Compare Operation With Immediate:
+operation_type (4): 6 remaing spots!
+EQUAL,                          NOT_EQUAL, 
+  SIGNED_GREATER_THAN,            SIGNED_LESS_THAN, 
+  SIGNED_GREATER_THAN_OR_EQUAL,   SIGNED_LESS_THAN_OR_EQUAL, 
+UNSIGNED_GREATER_THAN,          UNSIGNED_LESS_THAN, 
+UNSIGNED_GREATER_THAN_OR_EQUAL, UNSIGNED_LESS_THAN_OR_EQUAL
+destination_boolean_register (2):
+   source_1_register (4):
+   source_2_extend (1):
+   source_2_immediate (8):
+
+---------------------------------------------------------------------------------
+
+Direct/Indirect Jump/Call:
+direct? (1):
+jump/call (1):
+condition_register (2):
+  address_register/offset (16):
+12 bits may be redundant if direct=0.
+
+---------------------------------------------------------------------------------
+
+Load
+source_register (4):
+   address_register (4):
+   offset (8):
+
+---------------------------------------------------------------------------------
+
+Store
+destination_register (4):
+   address_register (4):
+   offset (8):
+
+---------------------------------------------------------------------------------
+
+Push
+
+register (4):
+
+---------------------------------------------------------------------------------
+
+Pop
+
+register (4):
+
+---------------------------------------------------------------------------------
+
+Return:
+condition_register (2):
+
+---------------------------------------------------------------------------------
+
+
+To-Do (for the instruction set):
+HDD
+C:\ interaction
+
+
+
+
+
+jump [b2] OFFSET # direct jump
+jump [b2] reg    # indirect jump
+
+jump [b2] r1 + r2
+
+
+
+
+
+  int: 0b_0101001
+-128?
+float: 0b_<mantissa-1><exponent> 0? inf? -inf? NaN?
+        +/-
+NaN != NaN
+
+
+label xor
+push_r0
+push_r4
+push_r5
+# r1 xor r2 --> r3
+r1_r0
+r2_r4
+r1_r2
+nand
+# r3 = NOT r1
+r3_r1
+r4_r2
+and
+r3_r5
+# r5 = (NOT r1) AND r2
+# r0 = r1
+# r2 = r2
+r2_r1
+nand
+# r3 = NOT r2
+r3_r2
+r0_r1
+and
+# r3 = (NOT r2) AND r1
+r3_r1
+r5_r2
+or
+pop_r5
+pop_r4
+pop_r0
+return
