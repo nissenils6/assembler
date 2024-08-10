@@ -6,7 +6,7 @@ struct Register(usize);
 #[derive(Debug, Copy, Clone)]
 enum RegisterOrImmediate {
     Reg(Register),
-    Imm(usize),
+    Imm(u32),
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -33,17 +33,22 @@ enum ArithmeticOperation {
 }
 
 #[derive(Debug, Copy, Clone)]
+#[repr(u32)]
 enum CompareOperation {
-    Eq,
-    Neq,
-    Sgt,
-    Slt,
-    Sgte,
-    Slte,
-    Ugt,
-    Ult,
-    Ugte,
-    Ulte,
+    // Special
+    // Greater/Less
+    // Ignore/Equal
+    // Signed/Unsigned
+    Sgt = 0b0000,
+    Ugt = 0b0001,
+    Sgte = 0b0010,
+    Ugte = 0b0011,
+    Slt = 0b0100,
+    Ult = 0b0101,
+    Slte = 0b0110,
+    Ulte = 0b0111,
+    Eq = 0b1000,
+    Neq = 0b1001,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -74,10 +79,47 @@ enum AssemblyInstruction {
     },
 }
 
+fn validate_immediate(imm: u32) -> (u32, u32) {
+    let b_imm: u32 = (imm & 0xFF) << 0;
+
+    let extend = if (imm & 0xFFFFFF00) == 0xFFFFFF00 {
+        (1 as u32) << 19
+    } else if (imm & 0xFFFFFF00) == 0 {
+        (0 as u32) << 19
+    } else {
+        panic!("Invalid Immediate")
+    };
+
+    (b_imm, extend)
+}
+
 fn translate_instruction(instruction: AssemblyInstruction) -> u32 {
     match instruction {
-        AssemblyInstruction::Mov { dst, src } => {
-            todo!()
+        AssemblyInstruction::Mov {
+            dst,
+            src: RegisterOrImmediate::Reg(src),
+        } => {
+            // Logic Operation: 00000000 00000TTT DDDDAAAA BBBB0000
+            let opcode: u32 = 0b00000000 << 24;
+            let optype: u32 = (LogicOperation::Or as u32) << 16;
+            let dst_reg: u32 = (dst.0 as u32) << 12;
+            let a_reg: u32 = (Register(0).0 as u32) << 8;
+            let b_reg: u32 = (src.0 as u32) << 4;
+            opcode | optype | dst_reg | a_reg | b_reg
+        }
+        AssemblyInstruction::Mov {
+            dst,
+            src: RegisterOrImmediate::Imm(src),
+        } => {
+            // Logic Operation With Immediate: 00000001 0000ETTT DDDDAAAA IIIIIIII
+            let opcode: u32 = 0b00000001 << 24;
+            let optype: u32 = (LogicOperation::Or as u32) << 16;
+            let dst_reg: u32 = (dst.0 as u32) << 12;
+            let a_reg: u32 = (Register(0).0 as u32) << 8;
+
+            let (b_imm, extend) = validate_immediate(src);
+
+            opcode | extend | optype | dst_reg | a_reg | b_imm
         }
         AssemblyInstruction::Logic {
             op,
@@ -85,12 +127,14 @@ fn translate_instruction(instruction: AssemblyInstruction) -> u32 {
             a,
             b: RegisterOrImmediate::Reg(b),
         } => {
+            // Logic Operation: 00000000 00000TTT DDDDAAAA BBBB0000
             let opcode: u32 = 0b00000000 << 24;
             let optype: u32 = (op as u32) << 16;
-            let dst_binary: u32 = (dst.0 as u32) << 12;
-            let a_binary: u32 = (a.0 as u32) << 8;
-            let b_binary: u32 = (b.0 as u32) << 4;
-            opcode | optype | dst_binary | a_binary | b_binary
+            let dst_reg: u32 = (dst.0 as u32) << 12;
+            let a_reg: u32 = (a.0 as u32) << 8;
+            let b_reg: u32 = (b.0 as u32) << 4;
+
+            opcode | optype | dst_reg | a_reg | b_reg
         }
         AssemblyInstruction::Logic {
             op,
@@ -98,7 +142,15 @@ fn translate_instruction(instruction: AssemblyInstruction) -> u32 {
             a,
             b: RegisterOrImmediate::Imm(b),
         } => {
-            todo!()
+            // Logic Operation With Immediate: 00000001 0000ETTT DDDDAAAA IIIIIIII
+            let opcode: u32 = 0b00000001 << 24;
+            let optype: u32 = (op as u32) << 16;
+            let dst_reg: u32 = (dst.0 as u32) << 12;
+            let a_reg: u32 = (a.0 as u32) << 8;
+
+            let (b_imm, extend) = validate_immediate(b);
+
+            opcode | extend | optype | dst_reg | a_reg | b_imm
         }
         AssemblyInstruction::Arith {
             op,
@@ -106,12 +158,77 @@ fn translate_instruction(instruction: AssemblyInstruction) -> u32 {
             carry_in,
             dst,
             a,
-            b,
+            b: RegisterOrImmediate::Reg(b),
         } => {
-            todo!()
+            // Arithmetic Operation: 00000010 PPQQ000T DDDDAAAA BBBB0000
+            let opcode: u32 = 0b00000010 << 24;
+            let carry_out: u32 = (carry_out.0 as u32) << 22;
+            let carry_in: u32 = (carry_in.0 as u32) << 20;
+            let optype: u32 = (op as u32) << 16;
+            let dst_reg: u32 = (dst.0 as u32) << 12;
+            let a_reg: u32 = (a.0 as u32) << 8;
+            let b_reg: u32 = (b.0 as u32) << 4;
+
+            opcode | carry_out | carry_in | optype | dst_reg | a_reg | b_reg
         }
-        AssemblyInstruction::Comp { op, dst, a, b } => {
-            todo!()
+        AssemblyInstruction::Arith {
+            op,
+            carry_out,
+            carry_in,
+            dst,
+            a,
+            b: RegisterOrImmediate::Imm(b),
+        } => {
+            // Arithmetic Operation With Immediate: 00000011 PPQQE00T DDDDAAAA IIIIIIII
+            let opcode: u32 = 0b00000011 << 24;
+            let carry_out: u32 = (carry_out.0 as u32) << 22;
+            let carry_in: u32 = (carry_in.0 as u32) << 20;
+            let optype: u32 = (op as u32) << 16;
+            let dst_reg: u32 = (dst.0 as u32) << 12;
+            let a_reg: u32 = (a.0 as u32) << 8;
+
+            let (b_imm, extend) = validate_immediate(b);
+
+            opcode | carry_out | carry_in | extend | optype | dst_reg | a_reg | b_imm
+        }
+        AssemblyInstruction::Comp {
+            op,
+            dst,
+            a,
+            b: RegisterOrImmediate::Reg(b),
+        } => {
+            // Compare Operation: 00000100 PP000000 TTTTAAAA BBBB0000
+
+            // y = type % 4
+            // t = type - type % 4
+            // XX00XX
+            let opcode: u32 = 0b00000100 << 24;
+            let dst_reg: u32 = (dst.0 as u32) << 22;
+            let optype: u32 = (op as u32) << 12;
+            let a_reg: u32 = (a.0 as u32) << 8;
+            let b_reg: u32 = (b.0 as u32) << 4;
+
+            opcode | dst_reg | optype | a_reg | b_reg
+        }
+        AssemblyInstruction::Comp {
+            op,
+            dst,
+            a,
+            b: RegisterOrImmediate::Imm(b),
+        } => {
+            // Compare Operation With Immediate: 00000101 PP00E000 TTTTAAAA IIIIIIII
+
+            // y = type % 4
+            // t = type - type % 4
+            // XX00XX
+            let opcode: u32 = 0b00000101 << 24;
+            let dst_reg: u32 = (dst.0 as u32) << 22;
+            let optype: u32 = (op as u32) << 12;
+            let a_reg: u32 = (a.0 as u32) << 8;
+
+            let (b_imm, extend) = validate_immediate(b);
+
+            opcode | dst_reg | optype | extend | a_reg | b_imm
         }
     }
 }
@@ -124,9 +241,18 @@ fn parser() -> impl Parser<char, Vec<AssemblyInstruction>, Error = Simple<char>>
 
     let immediate_parser = text::int(10).padded().map(|s: String| s.parse().unwrap());
 
+    let negative_immediate_parser = just('-').chain(text::int(10)).padded().map(|s: Vec<char>| {
+        s.iter()
+            .copied()
+            .collect::<String>()
+            .parse::<i32>()
+            .unwrap() as u32
+    });
+
     let register_or_immediate_parser = register_parser
         .map(RegisterOrImmediate::Reg)
-        .or(immediate_parser.map(RegisterOrImmediate::Imm));
+        .or(immediate_parser.map(RegisterOrImmediate::Imm))
+        .or(negative_immediate_parser.map(RegisterOrImmediate::Imm));
 
     let boolean_register_parser = just('b')
         .ignore_then(text::int(10))
@@ -241,22 +367,43 @@ fn parser() -> impl Parser<char, Vec<AssemblyInstruction>, Error = Simple<char>>
 fn main() -> Result<(), String> {
     let input_path = std::env::args()
         .nth(1)
-        .ok_or_else(|| "No input file path provided")?;
+        .ok_or_else(|| "No input file path provided.")?;
 
     let output_path = std::env::args()
         .nth(2)
-        .ok_or_else(|| "No output file path provided")?;
+        .ok_or_else(|| "No output file path provided.")?;
 
     let parser = parser();
 
     let input = std::fs::read_to_string(&input_path)
-        .map_err(|_| format!("Could not read from file '{}'", &input_path))?;
+        .map_err(|_| format!("Could not read from file '{}'.", &input_path))?;
 
     let instructions = parser
         .parse(&*input)
         .map_err(|e| format!("Could not parse code: {:?}", e))?;
 
-    println!("{:?}", &instructions);
+    /*
+    File Header:
+     - Program Size
+     - Program Location
+     - Start Location
+     - Stack Location
+         */
+
+    let mut output = vec![instructions.len() as u32, 0, 0, 0];
+    output.extend(instructions.iter().copied().map(translate_instruction));
+
+    std::fs::write(
+        &output_path,
+        &output
+            .iter()
+            .copied()
+            .flat_map(|n| n.to_le_bytes())
+            .collect::<Vec<_>>(),
+    )
+    .map_err(|_| format!("Could not write to file '{}'.", &output_path))?;
+
+    println!("Assembling successful! Generated file '{}'.", output_path);
 
     Ok(())
 }
