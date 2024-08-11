@@ -1,87 +1,10 @@
-use chumsky::prelude::*;
+use chumsky::{error, prelude::*};
+use text::newline;
 
-#[derive(Debug, Copy, Clone)]
-struct Register(usize);
+use crate::assembler_core::*;
 
-#[derive(Debug, Copy, Clone)]
-enum RegisterOrImmediate {
-    Reg(Register),
-    Imm(u32),
-}
-
-#[derive(Debug, Copy, Clone)]
-struct BooleanRegister(usize);
-
-#[derive(Debug, Copy, Clone)]
-#[repr(u32)]
-enum LogicOperation {
-    And = 0,
-    Or,
-    Xor,
-    Lshift,
-    Rshift,
-    Lrotate,
-    Rrotate,
-    Arithrshift,
-}
-
-#[derive(Debug, Copy, Clone)]
-#[repr(u32)]
-enum ArithmeticOperation {
-    Add = 0,
-    Sub,
-}
-
-#[derive(Debug, Copy, Clone)]
-#[repr(u32)]
-enum CompareOperation {
-    // Special
-    // Greater/Less
-    // Ignore/Equal
-    // Signed/Unsigned
-    Sgt = 0b0000,
-    Ugt = 0b0001,
-    Sgte = 0b0010,
-    Ugte = 0b0011,
-    Slt = 0b0100,
-    Ult = 0b0101,
-    Slte = 0b0110,
-    Ulte = 0b0111,
-    Eq = 0b1000,
-    Neq = 0b1001,
-}
-
-#[derive(Debug, Copy, Clone)]
-enum AssemblyInstruction {
-    Mov {
-        dst: Register,
-        src: RegisterOrImmediate,
-    },
-    Logic {
-        op: LogicOperation,
-        dst: Register,
-        a: Register,
-        b: RegisterOrImmediate,
-    },
-    Arith {
-        op: ArithmeticOperation,
-        carry_out: BooleanRegister,
-        carry_in: BooleanRegister,
-        dst: Register,
-        a: Register,
-        b: RegisterOrImmediate,
-    },
-    Comp {
-        op: CompareOperation,
-        dst: BooleanRegister,
-        a: Register,
-        b: RegisterOrImmediate,
-    },
-    Disp {
-        display: u32,
-        src: RegisterOrImmediate,
-    },
-}
+pub mod assembler_core;
+pub mod lexer;
 
 fn validate_immediate(imm: u32) -> (u32, u32) {
     let b_imm: u32 = (imm & 0xFF) << 0;
@@ -111,8 +34,16 @@ fn validate_double_immediate(imm: u32) -> (u32, u32) {
     (b_imm, extend)
 }
 
-fn translate_instruction(instruction: AssemblyInstruction) -> u32 {
+fn verify_instruction(instruction: AssemblyInstruction) -> Option<()> {
+    None
+}
+
+fn translate_instruction(instruction: AssemblyInstruction) -> Option<u32> {
     match instruction {
+        AssemblyInstruction::None => None,
+        AssemblyInstruction::Error => {
+            unreachable!("This error should have been cought in previous compilation stages.")
+        }
         AssemblyInstruction::Mov {
             dst,
             src: RegisterOrImmediate::Reg(src),
@@ -123,7 +54,7 @@ fn translate_instruction(instruction: AssemblyInstruction) -> u32 {
             let dst_reg: u32 = (dst.0 as u32) << 12;
             let a_reg: u32 = (Register(0).0 as u32) << 8;
             let b_reg: u32 = (src.0 as u32) << 4;
-            opcode | optype | dst_reg | a_reg | b_reg
+            Some(opcode | optype | dst_reg | a_reg | b_reg)
         }
         AssemblyInstruction::Mov {
             dst,
@@ -137,7 +68,7 @@ fn translate_instruction(instruction: AssemblyInstruction) -> u32 {
 
             let (b_imm, extend) = validate_immediate(src);
 
-            opcode | extend | optype | dst_reg | a_reg | b_imm
+            Some(opcode | extend | optype | dst_reg | a_reg | b_imm)
         }
         AssemblyInstruction::Logic {
             op,
@@ -152,7 +83,7 @@ fn translate_instruction(instruction: AssemblyInstruction) -> u32 {
             let a_reg: u32 = (a.0 as u32) << 8;
             let b_reg: u32 = (b.0 as u32) << 4;
 
-            opcode | optype | dst_reg | a_reg | b_reg
+            Some(opcode | optype | dst_reg | a_reg | b_reg)
         }
         AssemblyInstruction::Logic {
             op,
@@ -168,7 +99,7 @@ fn translate_instruction(instruction: AssemblyInstruction) -> u32 {
 
             let (b_imm, extend) = validate_immediate(b);
 
-            opcode | extend | optype | dst_reg | a_reg | b_imm
+            Some(opcode | extend | optype | dst_reg | a_reg | b_imm)
         }
         AssemblyInstruction::Arith {
             op,
@@ -187,7 +118,7 @@ fn translate_instruction(instruction: AssemblyInstruction) -> u32 {
             let a_reg: u32 = (a.0 as u32) << 8;
             let b_reg: u32 = (b.0 as u32) << 4;
 
-            opcode | carry_out | carry_in | optype | dst_reg | a_reg | b_reg
+            Some(opcode | carry_out | carry_in | optype | dst_reg | a_reg | b_reg)
         }
         AssemblyInstruction::Arith {
             op,
@@ -207,7 +138,7 @@ fn translate_instruction(instruction: AssemblyInstruction) -> u32 {
 
             let (b_imm, extend) = validate_immediate(b);
 
-            opcode | carry_out | carry_in | extend | optype | dst_reg | a_reg | b_imm
+            Some(opcode | carry_out | carry_in | extend | optype | dst_reg | a_reg | b_imm)
         }
         AssemblyInstruction::Comp {
             op,
@@ -226,7 +157,7 @@ fn translate_instruction(instruction: AssemblyInstruction) -> u32 {
             let a_reg: u32 = (a.0 as u32) << 8;
             let b_reg: u32 = (b.0 as u32) << 4;
 
-            opcode | dst_reg | optype | a_reg | b_reg
+            Some(opcode | dst_reg | optype | a_reg | b_reg)
         }
         AssemblyInstruction::Comp {
             op,
@@ -246,7 +177,7 @@ fn translate_instruction(instruction: AssemblyInstruction) -> u32 {
 
             let (b_imm, extend) = validate_immediate(b);
 
-            opcode | dst_reg | optype | extend | a_reg | b_imm
+            Some(opcode | dst_reg | optype | extend | a_reg | b_imm)
         }
         AssemblyInstruction::Disp {
             display,
@@ -259,7 +190,7 @@ fn translate_instruction(instruction: AssemblyInstruction) -> u32 {
             let display: u32 = display << 16;
             let src: u32 = (src.0 as u32) << 4;
 
-            opcode | display | src
+            Some(opcode | display | src)
         }
         AssemblyInstruction::Disp {
             display,
@@ -272,36 +203,27 @@ fn translate_instruction(instruction: AssemblyInstruction) -> u32 {
             let display: u32 = display << 16;
             let (src, extend) = validate_double_immediate(src);
 
-            opcode | extend | display | src
+            Some(opcode | extend | display | src)
         }
     }
 }
 
 fn parser() -> impl Parser<char, Vec<AssemblyInstruction>, Error = Simple<char>> {
-    let register_parser = just('r')
-        .ignore_then(text::int(10))
-        .padded()
-        .map(|s| Register(s.parse().unwrap()));
+    let register_parser = just('r').ignore_then(text::int(10)).padded().map(|s| Register(s.parse().unwrap()));
 
     let immediate_parser = text::int(10).padded().map(|s: String| s.parse().unwrap());
 
-    let negative_immediate_parser = just('-').chain(text::int(10)).padded().map(|s: Vec<char>| {
-        s.iter()
-            .copied()
-            .collect::<String>()
-            .parse::<i32>()
-            .unwrap() as u32
-    });
+    let negative_immediate_parser = just('-')
+        .chain(text::int(10))
+        .padded()
+        .map(|s: Vec<char>| s.iter().copied().collect::<String>().parse::<i32>().unwrap() as u32);
 
     let register_or_immediate_parser = register_parser
         .map(RegisterOrImmediate::Reg)
         .or(immediate_parser.map(RegisterOrImmediate::Imm))
         .or(negative_immediate_parser.map(RegisterOrImmediate::Imm));
 
-    let boolean_register_parser = just('b')
-        .ignore_then(text::int(10))
-        .padded()
-        .map(|s| BooleanRegister(s.parse().unwrap()));
+    let boolean_register_parser = just('b').ignore_then(text::int(10)).padded().map(|s| BooleanRegister(s.parse().unwrap()));
 
     let mov_parser = text::keyword("mov")
         .padded()
@@ -345,16 +267,14 @@ fn parser() -> impl Parser<char, Vec<AssemblyInstruction>, Error = Simple<char>>
             .then_ignore(just(','))
             .then(register_or_immediate_parser)
             .then_ignore(just(';').padded())
-            .map(
-                move |((((carry_out, carry_in), dst), a), b)| AssemblyInstruction::Arith {
-                    op,
-                    carry_out,
-                    carry_in,
-                    dst,
-                    a,
-                    b,
-                },
-            )
+            .map(move |((((carry_out, carry_in), dst), a), b)| AssemblyInstruction::Arith {
+                op,
+                carry_out,
+                carry_in,
+                dst,
+                a,
+                b,
+            })
     };
 
     let logic_parser = |keyword: &'static str, op: LogicOperation| {
@@ -389,6 +309,18 @@ fn parser() -> impl Parser<char, Vec<AssemblyInstruction>, Error = Simple<char>>
         .then_ignore(just(';').padded())
         .map(move |(display, src)| AssemblyInstruction::Disp { display, src });
 
+    let comment_parser = just('/')
+        .ignore_then(just('/'))
+        .ignore_then(newline().or(end()).not().repeated())
+        .ignore_then(newline().or(end()))
+        .to(AssemblyInstruction::None);
+
+    let block_comment_parser = just('/')
+        .ignore_then(just('*'))
+        .ignore_then(just('*').ignore_then(just('/')).not().repeated())
+        .ignore_then(just('*').ignore_then(just('/')))
+        .to(AssemblyInstruction::None);
+
     let instruction_parser = mov_parser
         .or(arith_parser("add", ArithmeticOperation::Add))
         .or(arith_parser("sub", ArithmeticOperation::Sub))
@@ -412,49 +344,61 @@ fn parser() -> impl Parser<char, Vec<AssemblyInstruction>, Error = Simple<char>>
         .or(comp_parser("ugte", CompareOperation::Ugte))
         .or(comp_parser("ult", CompareOperation::Ult))
         .or(comp_parser("ulte", CompareOperation::Ulte))
-        .or(disp_parser);
+        .or(disp_parser)
+        .or(comment_parser)
+        .or(block_comment_parser)
+        .recover_with(skip_parser(
+            just(';').not().repeated().ignore_then(just(';')).to(AssemblyInstruction::Error),
+        ));
 
     instruction_parser.repeated()
 }
 
 fn main() -> Result<(), String> {
-    let input_path = std::env::args()
-        .nth(1)
-        .ok_or_else(|| "No input file path provided.")?;
+    let input_path = std::env::args().nth(1).ok_or_else(|| "No input file path provided.")?;
 
-    let output_path = std::env::args()
-        .nth(2)
-        .ok_or_else(|| "No output file path provided.")?;
+    let output_path = std::env::args().nth(2).ok_or_else(|| "No output file path provided.")?;
 
     let parser = parser();
 
-    let input = std::fs::read_to_string(&input_path)
-        .map_err(|_| format!("Could not read from file '{}'.", &input_path))?;
+    let input = std::fs::read_to_string(&input_path).map_err(|_| format!("Could not read from file '{}'.", &input_path))?;
 
-    let instructions = parser
-        .parse(&*input)
-        .map_err(|e| format!("Could not parse code: {:?}", e))?;
+    let (instructions, errors) = parser.parse_recovery(&*input);
 
-    /*
-    File Header:
-     - Program Size
-     - Program Location
-     - Start Location
-     - Stack Location
-         */
+    if !errors.is_empty() {
+        for error in errors {
+            println!("Error: {:?}", error);
+        }
+
+        if let Some(instructions) = instructions {
+            for error in instructions.iter().copied().flat_map(verify_instruction) {
+                println!("Error: {:?}", error);
+            }
+        }
+
+        return Err("Compilation terminated due to previous errors.".into());
+    }
+
+    let Some(instructions) = instructions else {
+        unreachable!("Instructions should exist if no errors were produced.");
+    };
+
+    let mut errored = false;
+
+    for error in instructions.iter().copied().flat_map(verify_instruction) {
+        println!("Error: {:?}", error);
+        errored = true;
+    }
+
+    if errored {
+        return Err("Compilation terminated due to previous errors.".into());
+    }
 
     let mut output = vec![instructions.len() as u32, 0, 0, 0];
-    output.extend(instructions.iter().copied().map(translate_instruction));
+    output.extend(instructions.iter().copied().flat_map(translate_instruction));
 
-    std::fs::write(
-        &output_path,
-        &output
-            .iter()
-            .copied()
-            .flat_map(|n| n.to_le_bytes())
-            .collect::<Vec<_>>(),
-    )
-    .map_err(|_| format!("Could not write to file '{}'.", &output_path))?;
+    std::fs::write(&output_path, &output.iter().copied().flat_map(|n| n.to_le_bytes()).collect::<Vec<_>>())
+        .map_err(|_| format!("Could not write to file '{}'.", &output_path))?;
 
     println!("Assembling successful! Generated file '{}'.", output_path);
 
