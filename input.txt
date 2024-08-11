@@ -1,3 +1,103 @@
-mov r1, 34;
-mov r2, 35;
-add r3, r1, r2;
+mov r5, 154;
+shl r5, r5, 24;
+or r2, r2, r5;
+disp 1, r2;
+
+mov r5, 148;
+shl r5, r5, 16;
+or r2, r2, r5;
+disp 1, r2;
+
+mov r5, 146;
+shl r5, r5, 8;
+or r2, r2, r5;
+disp 1, r2;
+
+mov r5, 48;
+shl r5, r5, 0;
+or r2, r2, r5;
+disp 1, r2;
+
+
+
+mov r5, 21;
+shl r5, r5, 24;
+or r1, r1, r5;
+disp 0, r1;
+
+mov r5, 235;
+shl r5, r5, 16;
+or r1, r1, r5;
+disp 0, r1;
+
+mov r5, 41;
+shl r5, r5, 8;
+or r1, r1, r5;
+disp 0, r1;
+
+mov r5, 5;
+shl r5, r5, 0;
+or r1, r1, r5;
+disp 0, r1;
+
+
+
+mov r5, 59;
+shl r5, r5, 24;
+or r4, r4, r5;
+disp 3, r4;
+
+mov r5, 123;
+shl r5, r5, 16;
+or r4, r4, r5;
+disp 3, r4;
+
+mov r5, 200;
+shl r5, r5, 8;
+or r4, r4, r5;
+disp 3, r4;
+
+mov r5, 89;
+shl r5, r5, 0;
+or r4, r4, r5;
+disp 3, r4;
+
+
+
+mov r5, 40;
+shl r5, r5, 24;
+or r3, r3, r5;
+disp 2, r3;
+
+mov r5, 106;
+shl r5, r5, 16;
+or r3, r3, r5;
+disp 2, r3;
+
+mov r5, 197;
+shl r5, r5, 8;
+or r3, r3, r5;
+disp 2, r3;
+
+mov r5, 222;
+shl r5, r5, 0;
+or r3, r3, r5;
+disp 2, r3;
+
+adc [b1, b0] r5, r1, r3;
+adc [b1, b1] r6, r2, r4;
+
+disp 0, 0;
+disp 1, 0;
+disp 2, r5;
+disp 3, r6;
+
+// r2:r1 + r4:r3 = r6:r5
+
+// 0x9a94923015eb2905   +  0x3b7bc859286ac5de =   0xd6105a893e55eee3
+// 11138688513617897733 + 4286239755628889566 = 15424928269246787299
+
+// 2593428016 367732997
+// 997967961 678086110
+
+// 3591395977 1045819107

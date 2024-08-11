@@ -55,20 +55,26 @@ where:
    I = Immediate Value
    J = Signed Offset
 
+Display opcodes start at 255 (or -1), and work backwards, so as to seperate them
+from the logic opcodes
+
 F(B) -> (Logic Operation, Arithmetic Operation, Compare Operation, With Immediate, e)
 
 Logic Operation                     00000000 00000TTT DDDDAAAA BBBB0000 y
 Logic Operation With Immediate      00000001 0000ETTT DDDDAAAA IIIIIIII y
 Arithmetic Operation                00000010 PPQQ000T DDDDAAAA BBBB0000 y
 Arithmetic Operation With Immediate 00000011 PPQQE00T DDDDAAAA IIIIIIII y
-Compare Operation                   00000100 PP000000 TTTTAAAA BBBB0000 
-Compare Operation With Immediate    00000101 PP00E000 TTTTAAAA IIIIIIII 
-Direct/Indirect Jump/Call           00000110 00QQ00DC JJJJJJJJ JJJJJJJJ x
+Compare Operation                   00000100 PP000000 TTTTAAAA BBBB0000 y
+Compare Operation With Immediate    00000101 PP00E000 TTTTAAAA IIIIIIII y
+Direct/Indirect Jump/Call           00000110 00QQE0DC JJJJJJJJ JJJJJJJJ x
 Ret                                 00000111 00QQ0000 00000000 00000000 x
 Load                                00001000 IIIIIIII DDDD0000 BBBB0000 x
 Store                               00001001 IIIIIIII 0000AAAA BBBB0000 x
 Push                                00001010 00000000 0000AAAA BBBB0000 x
 Pop                                 00001011 00000000 DDDD0000 BBBB0000 x
+.                                   ~~~~~~~~ 
+Display                             11111110 000000TT 00000000 BBBB0000
+Display With Immediate              11111111 0000E0TT JJJJJJJJ JJJJJJJJ
 
 --------------------------------------------------------------------------------
 
@@ -89,8 +95,12 @@ Control lines:
  - Arithmetic Operation
  - Compare Operation
  - Use Immediate
+ - Use Long Immediate
  - Enable Boolean Destination
  - Increment Instruction Pointer
+
+[31]:
+ - Display
 
 --------------------------------------------------------------------------------
 
@@ -218,12 +228,33 @@ Move:
 - arith_rshift 0
 - add r0
 - sub r0
-- or r0
+- OR r0
 - xor r0
 - l/r shift r0
 - l/r rotate r0
 - arith_rshift r0
 - and -1
+
+---------------------------------------------------------------------------------
+
+7-Segment Display:
+
+ 0: 63
+ 1: 6
+ 2: 91
+ 3: 79
+ 4: 102
+ 5: 109
+ 6: 125
+ 7: 7
+ 8: 127
+ 9: 103
+ A: 119
+ B: 124
+ C: 57
+ D: 94
+ E: 121
+ F: 113
 
 
 To-Do (for the instruction set):
@@ -281,3 +312,6 @@ pop_r5
 pop_r4
 pop_r0
 return
+
+
+

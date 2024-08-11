@@ -77,6 +77,10 @@ enum AssemblyInstruction {
         a: Register,
         b: RegisterOrImmediate,
     },
+    Disp {
+        display: u32,
+        src: RegisterOrImmediate,
+    },
 }
 
 fn validate_immediate(imm: u32) -> (u32, u32) {
@@ -88,6 +92,20 @@ fn validate_immediate(imm: u32) -> (u32, u32) {
         (0 as u32) << 19
     } else {
         panic!("Invalid Immediate")
+    };
+
+    (b_imm, extend)
+}
+
+fn validate_double_immediate(imm: u32) -> (u32, u32) {
+    let b_imm: u32 = (imm & 0xFFFF) << 0;
+
+    let extend = if (imm & 0xFFFF0000) == 0xFFFF0000 {
+        (1 as u32) << 19
+    } else if (imm & 0xFFFF0000) == 0 {
+        (0 as u32) << 19
+    } else {
+        panic!("Invalid Double Immediate")
     };
 
     (b_imm, extend)
@@ -230,6 +248,32 @@ fn translate_instruction(instruction: AssemblyInstruction) -> u32 {
 
             opcode | dst_reg | optype | extend | a_reg | b_imm
         }
+        AssemblyInstruction::Disp {
+            display,
+            src: RegisterOrImmediate::Reg(src),
+        } => {
+            // Display: 11111110 000000TT 00000000 BBBB0000
+            assert!(display <= 3, "Invalid display index");
+
+            let opcode: u32 = 0b11111110 << 24;
+            let display: u32 = display << 16;
+            let src: u32 = (src.0 as u32) << 4;
+
+            opcode | display | src
+        }
+        AssemblyInstruction::Disp {
+            display,
+            src: RegisterOrImmediate::Imm(src),
+        } => {
+            // Display With Immediate: 11111111 0000E0TT JJJJJJJJ JJJJJJJJ
+            assert!(display <= 3, "Invalid display index");
+
+            let opcode: u32 = 0b11111111 << 24;
+            let display: u32 = display << 16;
+            let (src, extend) = validate_double_immediate(src);
+
+            opcode | extend | display | src
+        }
     }
 }
 
@@ -337,6 +381,14 @@ fn parser() -> impl Parser<char, Vec<AssemblyInstruction>, Error = Simple<char>>
             .map(move |((dst, a), b)| AssemblyInstruction::Comp { op, dst, a, b })
     };
 
+    let disp_parser = text::keyword("disp")
+        .padded()
+        .ignore_then(immediate_parser)
+        .then_ignore(just(','))
+        .then(register_or_immediate_parser)
+        .then_ignore(just(';').padded())
+        .map(move |(display, src)| AssemblyInstruction::Disp { display, src });
+
     let instruction_parser = mov_parser
         .or(arith_parser("add", ArithmeticOperation::Add))
         .or(arith_parser("sub", ArithmeticOperation::Sub))
@@ -359,7 +411,8 @@ fn parser() -> impl Parser<char, Vec<AssemblyInstruction>, Error = Simple<char>>
         .or(comp_parser("ugt", CompareOperation::Ugt))
         .or(comp_parser("ugte", CompareOperation::Ugte))
         .or(comp_parser("ult", CompareOperation::Ult))
-        .or(comp_parser("ulte", CompareOperation::Ulte));
+        .or(comp_parser("ulte", CompareOperation::Ulte))
+        .or(disp_parser);
 
     instruction_parser.repeated()
 }
