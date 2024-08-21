@@ -1,0 +1,10 @@
+r3 label test 17 0xaa
+// Single line comment
+hello r17 r0
+mov r14, 143596124678902137463
+add r2, r4, 0xf8e7d3ac4be670fd476a78cba
+0b110011 /* Block Comment */ 0xgafc ! 62
+
+code {
+    
+}

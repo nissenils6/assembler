@@ -1,0 +1,16 @@
+data variable_name u32 = 8172063;
+
+
+load r4, [variable_name]
+
+
+mov r1, 10; // Test Comment
+add r2, r1, r1;
+
+mov r5, 61;
+
+
+file format:
+ - header
+ - code
+ - data

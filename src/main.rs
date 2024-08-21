@@ -1,10 +1,12 @@
-use chumsky::{error, prelude::*};
+use chumsky::prelude::*;
+use lexer::lexer;
 use text::newline;
 
 use crate::assembler_core::*;
 
 pub mod assembler_core;
 pub mod lexer;
+pub mod parser;
 
 fn validate_immediate(imm: u32) -> (u32, u32) {
     let b_imm: u32 = (imm & 0xFF) << 0;
@@ -205,6 +207,7 @@ fn translate_instruction(instruction: AssemblyInstruction) -> Option<u32> {
 
             Some(opcode | extend | display | src)
         }
+        _ => unimplemented!(),
     }
 }
 
@@ -352,6 +355,33 @@ fn parser() -> impl Parser<char, Vec<AssemblyInstruction>, Error = Simple<char>>
         ));
 
     instruction_parser.repeated()
+}
+
+fn main2() -> Result<(), String> {
+    let input_path = std::env::args().nth(1).ok_or_else(|| "No input file path provided.")?;
+    let output_path = std::env::args().nth(2).ok_or_else(|| "No output file path provided.")?;
+
+    let lexer = lexer();
+
+    let input = std::fs::read_to_string(&input_path).map_err(|_| format!("Could not read from file '{}'.", &input_path))?;
+
+    let (tokens, lexer_errors) = lexer.parse_recovery(&*input);
+
+    println!();
+    for lexer_error in lexer_errors {
+        lexer_error.print(&input_path, &input);
+        println!();
+    }
+
+    println!("Tokens:");
+    if let Some(tokens) = tokens {
+        for token in tokens {
+            println!("{:?}", token);
+        }
+        println!();
+    }
+
+    Ok(())
 }
 
 fn main() -> Result<(), String> {

@@ -1,0 +1,6 @@
+mov r1, 116;
+disp 0, r1;
+mov r2, 87;
+disp 1, r2;
+add r3, r1, r2;
+disp 2, r3;

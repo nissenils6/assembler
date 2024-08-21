@@ -1,4 +1,4 @@
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(u32)]
 pub enum LogicOperation {
     And = 0,
@@ -11,14 +11,14 @@ pub enum LogicOperation {
     Arithrshift,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(u32)]
 pub enum ArithmeticOperation {
     Add = 0,
     Sub,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(u32)]
 pub enum CompareOperation {
     // Special
@@ -37,8 +37,9 @@ pub enum CompareOperation {
     Neq = 0b1001,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Operation {
+    Mov,
     Logic(LogicOperation),
     Arithmetic(ArithmeticOperation),
     ArithmeticCarry(ArithmeticOperation),
@@ -57,7 +58,7 @@ pub enum RegisterOrImmediate {
 #[derive(Debug, Copy, Clone)]
 pub struct BooleanRegister(pub usize);
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum AssemblyInstruction {
     None,
     Error,
@@ -89,4 +90,21 @@ pub enum AssemblyInstruction {
         display: u32,
         src: RegisterOrImmediate,
     },
+    Label {
+        label: String,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum DataElement {
+    Label(String),
+    Data1(u8),
+    Data2(u16),
+    Data4(u32),
+    Data8(u64),
+}
+
+pub struct AssemblyProgram {
+    pub instructions: Vec<AssemblyInstruction>,
+    pub data: Vec<DataElement>,
 }

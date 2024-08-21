@@ -84,6 +84,14 @@ File Header:
  - Start Location
  - Stack Location
 
+File Header V2:
+ - Program Size
+ - Program Location
+ - Data Size
+ - Data Location
+ - Start Location
+ - Stack Location
+
 --------------------------------------------------------------------------------
 
 Control lines:
